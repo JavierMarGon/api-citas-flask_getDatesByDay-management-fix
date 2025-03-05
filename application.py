@@ -548,6 +548,85 @@ def migracion():
         return jsonify({"msg": "Database already exists"}), 200
 
 
+@app.route("/currentUser", methods=["PATCH"])
+@jwt_required()
+def patchCurrentuser():
+    """
+    Actualizar datos del usuario logeado
+    ---
+    tags:
+        - Perfil
+    parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+                name:
+                    type: string
+                lastname:
+                    type: string
+                email:
+                    type: string
+                phone:
+                    type: string
+                date:
+                    type: string
+                    format: date
+                    example: "25/12/2025"
+                    description: Fecha de nacimiento en formato DD/MM/YYYY
+    responses:
+        200:
+            description: Usuario creado correctamente
+        400:
+            description: Usuario no existe
+    """
+    current_user = get_jwt_identity()
+    mydb = myclient["Clinica"]
+    mycol = mydb["usuarios"]
+
+    name = request.json.get('name', None)
+    lastname = request.json.get('lastname', None)
+    email = request.json.get('email', None)
+    phone = request.json.get('phone', None)
+    date = request.json.get('date', None)
+
+    newData = {}
+
+    if name:
+        newData["name"] = name
+
+    if lastname:
+        newData["lastname"] = lastname
+
+    if email:
+        newData["email"] = email
+
+    if phone:
+        newData["phone"] = phone
+
+    if date:
+        try:
+            date = datetime.strptime(date, '%d/%m/%Y').strftime('%d/%m/%Y')
+        except ValueError:
+            return jsonify({"msg": "Invalid date format"}), 400
+
+        newData["date"] = date
+
+    print(current_user)
+
+    update_result = mycol.update_one(
+        {"username": current_user},
+        {"$set": newData}  
+    )
+
+    if update_result.matched_count == 0:
+        return jsonify({"msg": "User not found"}), 404
+
+    return jsonify({"msg": "User updated"}), 201
+
+
 def format_dates(dates):
     result = []
     for date in dates:
